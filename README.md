@@ -24,8 +24,17 @@ Sign up once (Sign Up tab in the app), confirm the email if required, sign in.
 3. Project Settings → Environment Variables, add:
      VITE_SUPABASE_URL
      VITE_SUPABASE_ANON_KEY
-     ANTHROPIC_API_KEY
+     GEMINI_API_KEY       (see step 4 below — free tier)
+     ANTHROPIC_API_KEY    (optional — only needed if you use the Claude toggle)
 4. Deploy (redeploy once after adding env vars if you added them post-deploy).
+
+## 4. Gemini API key (free tier, optional)
+1. https://aistudio.google.com/apikey → sign in → Create API key.
+2. Vercel → Project Settings → Environment Variables → add `GEMINI_API_KEY`.
+3. Redeploy. The AI Coach's provider toggle defaults to Gemini.
+   Model used: `gemini-2.5-flash` (see api/gemini-review.js) — check
+   https://ai.google.dev/gemini-api/docs/models for current free-tier models
+   and swap the model string there if Google renames/retires it later.
 
 ## Notes
 - The AI Coach calls `/api/ai-review` (a Vercel serverless function), never

@@ -1032,10 +1032,15 @@ function Goals({trades,goals,saveGoals,settings,saveSettings,showToast,mTrades})
   );
 }
 
-/* AI REVIEW — calls your own /api/ai-review serverless function instead of
-   Anthropic directly, so the API key stays server-side. See api/ai-review.js. */
+/* AI REVIEW — calls your own serverless functions instead of hitting a
+   provider directly, so no key ever reaches the browser. /api/ai-review
+   proxies Anthropic (paid); /api/gemini-review proxies Gemini (has a free
+   tier as of this writing — see api/gemini-review.js for the model/endpoint
+   and README.md for how to get a key). */
 function AIReview({trades}){
   const [mode,setMode]=useState("general");const[output,setOutput]=useState("");const[busy,setBusy]=useState(false);
+  const [provider,setProvider]=useState("gemini");
+  const PROVIDERS=[["gemini","GEMINI (FREE TIER)"],["claude","CLAUDE"]];
   const MODES=[["general","GENERAL"],["tte","JOE ROSS ANALYSIS"],["elder","ELDER ANALYSIS"],["psychology","PSYCHOLOGY"],["risk","RISK"]];
   const analyze=async()=>{
     if(trades.length<3){setOutput("Need at least 3 trades.");return;}
@@ -1046,15 +1051,22 @@ function AIReview({trades}){
     const base=`You are a professional trading coach reviewing a journal that blends two systems: (1) Joe Ross — Ross Hook (Rh) as primary trigger, Ledge/1-2-3/Congestion structures, TTE (enter before pivot breaks) vs Standard Breakout vs Pullback Re-entry; and (2) Elder's Triple Screen — weekly tide, daily wave, impulse system (green/blue/red bars gate entries), value zone (between fast/slow EMA) as the preferred entry area, and RSI/MACD divergence as an early-exit warning. Be specific and data-driven, max 350 words.\n\nSTATS: ${n} trades | WR: ${wr}% | R: ${tr}R | Expectancy: ${ex}R\nJoe Ross trades: ${ross.length} (${ross.length?(wRate(ross)*100).toFixed(0):"--"}%WR) | Elder trades: ${elder.length} (${elder.length?(wRate(elder)*100).toFixed(0):"--"}%WR) | TTE: ${tte.length}`;
     const prompts={general:base+"\n\nComprehensive review. Top 3 improvements.",tte:base+"\n\nFocus on the Joe Ross trades — Rh quality, pivot width, TTE vs Standard, re-entries.",elder:base+"\n\nFocus on the Elder trades — triple screen alignment, impulse system discipline, value-zone entries, divergence exits.",psychology:base+"\n\nEmotional patterns and impact.",risk:base+"\n\nRisk management and drawdown."};
     try{
-      const res=await fetch("/api/ai-review",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:prompts[mode]})});
+      const endpoint=provider==="gemini"?"/api/gemini-review":"/api/ai-review";
+      const res=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:prompts[mode]})});
       const data=await res.json();
-      setOutput(data.error?"Error: "+(data.error.message||data.error):data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n"));
+      if(data.error){setOutput("Error: "+(data.error.message||data.error));}
+      else if(provider==="gemini"){setOutput(data.text||"(empty response)");}
+      else{setOutput(data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n"));}
     }catch(e){setOutput("Request failed: "+e.message);}
     setBusy(false);
   };
   return(
     <div className="panel">
       <div className="ph">AI TRADE COACH</div>
+      <div style={{marginBottom:10}}>
+        <label className="fl">PROVIDER</label>
+        <div style={{display:"flex",gap:4}}>{PROVIDERS.map(([id,l])=>(<button key={id} className={"esel"+(provider===id?" on":"")} onClick={()=>setProvider(id)}>{l}</button>))}</div>
+      </div>
       <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>{MODES.map(([id,l])=>(<button key={id} className={"esel"+(mode===id?" on":"")} onClick={()=>setMode(id)}>{l}</button>))}</div>
       <button className="btn bp" onClick={analyze} disabled={busy} style={{marginBottom:10}}>{busy?"ANALYZING...":"ANALYZE"}</button>
       {busy&&<div style={{color:"#444",fontSize:10,textAlign:"center",padding:20,letterSpacing:3}}>PROCESSING {trades.length} TRADES...</div>}
