@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return;
   }
   try {
-    const model = "gemini-2.5-flash"; // free-tier model as of this writing
+    const model = "gemini-3.8-flash"; // free-tier model as of this writing
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
