@@ -1286,9 +1286,11 @@ function AuthGate(){
 
   return(
     <div>
-      <div style={{position:"fixed",top:0,right:0,zIndex:200,padding:"4px 10px",fontSize:9,color:"#444",fontFamily:"'Courier New',monospace"}}>
-        <span style={{marginRight:10}}>{session.user.email}</span>
-        <button onClick={()=>supabase.auth.signOut()} style={{background:"transparent",border:"1px solid #333",color:"#888",fontSize:9,padding:"2px 6px",cursor:"pointer",fontFamily:"inherit"}}>SIGN OUT</button>
+      {/* Separate, muted account strip — intentionally its own row so it never
+          competes with or overlaps the journal's own account/stats header below. */}
+      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8,padding:"2px 10px",background:"#000",borderBottom:"1px solid #111",fontSize:9,fontFamily:"'Courier New',monospace"}}>
+        <span style={{color:"#333"}}>{session.user.email}</span>
+        <button onClick={()=>supabase.auth.signOut()} style={{background:"transparent",border:"1px solid #222",color:"#555",fontSize:8,padding:"1px 6px",cursor:"pointer",fontFamily:"inherit",letterSpacing:1}}>SIGN OUT</button>
       </div>
       <JournalApp/>
     </div>
