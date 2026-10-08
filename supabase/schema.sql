@@ -26,3 +26,27 @@ create policy "kv_update_own" on public.kv
 -- today, but harmless to have and matches the other policies).
 create policy "kv_delete_own" on public.kv
   for delete using (auth.uid() = user_id);
+
+-- ── Screenshot uploads ──
+-- Run this too. Creates a public-read bucket for trade chart screenshots,
+-- with write access restricted to each user's own folder (path prefix
+-- "<user_id>/..."), via RLS on storage.objects.
+
+insert into storage.buckets (id, name, public)
+values ('trade-screenshots', 'trade-screenshots', true)
+on conflict (id) do nothing;
+
+create policy "trade_screenshots_read_all" on storage.objects
+  for select using (bucket_id = 'trade-screenshots');
+
+create policy "trade_screenshots_insert_own" on storage.objects
+  for insert with check (
+    bucket_id = 'trade-screenshots'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "trade_screenshots_delete_own" on storage.objects
+  for delete using (
+    bucket_id = 'trade-screenshots'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
