@@ -21,21 +21,6 @@ const expectancy=ts=>{const w=ts.filter(t=>t.outcome==="win"),l=ts.filter(t=>t.o
 const profitFactor=ts=>{const w=totR(ts.filter(t=>t.outcome==="win")),l=Math.abs(totR(ts.filter(t=>t.outcome==="loss")));if(l===0)return w>0?Infinity:0;return w/l;};
 const monthKey=d=>(d||"").slice(0,7)||"UNDATED";
 const monthLabel=k=>{if(k==="UNDATED")return"UNDATED";const[y,m]=k.split("-");const MN=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];return MN[+m-1]+" "+y;};
-const getAlerts=trades=>[...trades].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,30).map(t=>{
-  const issues=[];
-  if(t.tradingSystem!=="Elder"&&(!t.rhType||t.rhType==="None"))issues.push("No Rh structure logged");
-  if(t.tradingSystem==="Hybrid"&&!t.entryThesis?.trim())issues.push("Hybrid trade missing entry thesis — can't verify both conditions were required");
-  if(t.pivotWidth==="Wide"&&t.rr&&+t.rr<2)issues.push("Wide pivot + R:R < 2");
-  if(+t.rr>0&&+t.rr<1.5)issues.push(`R:R too low (${(+t.rr).toFixed(2)}x)`);
-  if(t.tripleScreen==="1")issues.push("Only 1 Elder screen aligned");
-  if(t.tradingSystem==="Elder"&&t.impulseSystem?.startsWith("Red")&&t.direction==="Long")issues.push("Long entry on Red impulse bar");
-  if(t.tradingSystem==="Elder"&&t.impulseSystem?.startsWith("Green")&&t.direction==="Short")issues.push("Short entry on Green impulse bar");
-  if(t.rules==="No")issues.push("Rules broken");
-  if(t.emoPre==="FOMO"||t.emoPre==="Revenge")issues.push(`Emotional entry (${t.emoPre})`);
-  if(t.entryQuality&&+t.entryQuality<=2)issues.push("Quality ≤ 2/5");
-  return issues.length?{t,issues}:null;
-}).filter(Boolean);
-
 const ALL_FIELDS=["date","pair","session","timeframe","direction","tradingSystem","entryThesis","wouldTakeRossAlone","wouldTakeElderAlone","rhType","entryType","pivotWidth","attempt","point1","point2","point3","hookPrice","macdSlope","ema13","forceIndex","oscType","oscReading","pullback","valueZone","impulseSystem","divergence","htf","tripleScreen","entryQuality","volatility","newsImpact","rules","positionSize","entry","sl","tp","exitPrice","exitReason","result","pnl","rr","overnightFin","emoPre","emoPost","tags","chartUrl","chartPost","chartDaily","notes"];
 const EXIT_REASONS=["Stop Loss Hit (Rh Pivot)","Profit Target Hit (R-multiple)","Hit Resistance (Long exit)","Hit Support (Short exit)","Opposing Hook","Ledge Break","MA Cross","Trailing Stop Hit","RSI/MACD Divergence","Time Stop","Manual / Discretionary"];
 
@@ -579,7 +564,6 @@ function Dashboard({trades,mood,saveMood,goals,mTrades,todayLI,deposits}){
   const [ms,setMs]=useState(mood.find(m=>m.date===today())?.score||7);
   const moodColor=ms>=8?"#00cc44":ms>=6?"#ffaa33":"#cc2200";
   const streak=(()=>{const s=[...trades].sort((a,b)=>(a.date||"").localeCompare(b.date||""));if(!s.length)return{t:"none",n:0};const last=s[s.length-1].outcome;let c=0;for(let i=s.length-1;i>=0;i--){if(s[i].outcome===last)c++;else break;}return{t:last,n:c};})();
-  const flagged=getAlerts(trades);
   return(
     <div>
       <div className="kgrid" style={{marginBottom:1}}>
@@ -649,14 +633,6 @@ function Dashboard({trades,mood,saveMood,goals,mTrades,todayLI,deposits}){
           <GoalBar label="TRADES" cur={mTrades.length} tgt={goals.monthlyTrades} unit=""/>
         </div>
       </div>
-      {flagged.length>0&&(
-        <div className="panel">
-          <div className="ph">AUTO-ALERTS — {flagged.length} FLAGGED</div>
-          <div style={{maxHeight:200,overflowY:"auto"}}>
-            {flagged.slice(0,8).map(({t,issues},i)=>(<div key={i} style={{padding:"6px 8px",background:"#0f0000",border:"1px solid #2a0000",marginBottom:4}}><div style={{display:"flex",gap:8,marginBottom:3,flexWrap:"wrap"}}><span style={{color:"#ff8c00",fontSize:10,fontWeight:"bold"}}>{t.date} {t.pair}</span><SysBadge sys={t.tradingSystem}/><span className={t.outcome} style={{fontSize:9}}>{(t.outcome||"").toUpperCase()}</span><span style={{fontSize:9,color:"#444"}}>{f2(+t.result||0)}R</span></div>{issues.map((iss,j)=>(<div key={j} style={{fontSize:9,color:"#cc4400"}}>▸ {iss}</div>))}</div>))}
-          </div>
-        </div>
-      )}
       <div className="panel">
         <div className="ph">RECENT TRADES</div>
         {!trades.length?(<div style={{color:"#333",fontSize:10,textAlign:"center",padding:14}}>NO TRADES — GO TO LOG</div>):(
@@ -774,6 +750,10 @@ function TradeLog({trades,saveTrades,showToast}){
     if(form.newsImpact==="Red"||form.newsImpact==="Orange")w.push(`${form.newsImpact} news impact — confirm this is intentional.`);
     if(form.emoPre==="FOMO"||form.emoPre==="Revenge")w.push(`Entering in a ${form.emoPre} state.`);
     if(sysVal==="Hybrid"&&!form.entryThesis.trim())w.push("Hybrid trade with no entry thesis recorded yet.");
+    if(sysVal!=="Elder"&&(!form.rhType||form.rhType==="None"))w.push("No Ross structure selected.");
+    if(form.tripleScreen==="1")w.push("Only 1 Elder screen aligned.");
+    if(form.rules==="No")w.push("Rules marked as broken.");
+    if(qScore<=2)w.push(`Entry quality is only ${qScore}/5.`);
     return w;
   })();
 
